@@ -190,7 +190,10 @@ if __name__ == '__main__':
 #### Dados no Bucket (Lake)
 
 ![data_bucket](prints/data_bucket_organizations.png)
-![data_bucket_delivery](prints/data_processing.png)
+![data_bucket_processing](prints/data_processing.png)
+![data_bucket_archives](prints/archives.png)
+![data_bucket_scripts](prints/scripts.png)
+
 
 #### EMR SERVERLESS
 
