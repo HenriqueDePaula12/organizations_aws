@@ -18,7 +18,14 @@ Lista de ferramentas utilizadas:
 
 ## UNZIP_AND_PROCESS
 
-Vamos entender o que esta função python está fazendo. Essa função python está realizando uma requisição no link de onde baixamos nosso arquivo de organizações e enviando para o S3 dentro do nosso bucket, após o zip estar dentro do bucket, estamos extraindo o arquivo que existe dentro dele e salvamos no S3 novamente em uma pasta RAW, após isso vamos criar uma pasta chamada ARCHIVES e vamos copiar o nosso arquivo zip já extraido para esta pasta e excluir o zip da pasta antiga, após isso pegamos nosso arquivo csv da RAW, convertemos em parquet e mandamos para a pasta PROCESSING, e por fim, estamos fazendo uma verificação para ver se o database no glue já é existente, se não, será criado o recurso. Após a criação do mesmo, é executada a criação do Crawler para que seja possível criar no Athena uma tabela para realizar consultas SQL dentro do Athena, seguindo a mesma lógica de criação do glue database.
+Vamos entender o que esta função python está fazendo. Essa função python está realizando uma requisição no link de onde baixamos nosso arquivo de organizações e enviando para o S3 dentro do nosso bucket.
+Após o zip estar dentro do bucket, estamos extraindo o arquivo que existe dentro dele e salvamos no S3 novamente em uma pasta RAW.
+
+Após isso vamos criar uma pasta chamada ARCHIVES e vamos copiar o nosso arquivo zip já extraido para esta pasta e excluir o zip da pasta antiga.
+
+Posteriormente pegamos nosso arquivo csv da RAW, convertemos em parquet e mandamos para a pasta PROCESSING.
+
+E por fim, estamos fazendo uma verificação para ver se o database no glue já é existente, se não, será criado o recurso. Após a criação do mesmo, é executada a criação do Crawler para que seja possível criar no Athena uma tabela para realizar consultas SQL dentro do Athena, seguindo a mesma lógica de criação do glue database.
 
 
 ```python
@@ -30,50 +37,39 @@ from io import BytesIO
 from pyspark.sql import SparkSession
 from zipfile import ZipFile, BadZipFile
 
-def upload_zip_to_s3(url, s3_bucket, s3_key):
-    # Baixar o arquivo zip do link
+def upload_zip_to_s3(url, s3_bucket, s3_key):    
     response = requests.get(url)
 
-    # Verificar se a solicitação foi bem-sucedida
     if response.status_code == 200:
 
-        # Converter o conteúdo do arquivo para bytes
         zip_bytes = BytesIO(response.content)
 
-        # Inicializar o cliente S3
         s3_client = boto3.client('s3')
 
         try:
-            # Caminho completo no S3 incluindo a pasta "RAW" e o nome do arquivo ZIP
             s3_path = f"RAW/{s3_key}"
 
-            # Upload do arquivo para o Amazon S3
             s3_client.upload_fileobj(zip_bytes, s3_bucket, s3_path)
 
             print(f"Arquivo ZIP enviado com sucesso para o S3 em: s3a://{s3_bucket}/{s3_path}")
         except Exception as e:
             print(f"Erro ao enviar o arquivo para o S3: {e}")
         finally:
-            # Fechar o cliente S3
             s3_client.close()
     else:
         print(f"Erro ao baixar o arquivo. Código de status: {response.status_code}")
 
 def processar_zip_no_s3(s3_bucket, zip_file_key):
-    # Criar um cliente S3
     s3_client = boto3.client('s3')
 
     try:
-        # Baixar o conteúdo do arquivo ZIP do S3
         response = s3_client.get_object(Bucket=s3_bucket, Key=zip_file_key)
         zip_data = response['Body'].read()
 
-        # Extrair o conteúdo do arquivo ZIP em memória
         with ZipFile(BytesIO(zip_data)) as zip_ref:
-            # Lista de nomes de arquivos extraídos
+
             file_list = zip_ref.namelist()
 
-            # Extrair cada arquivo e salvar no S3
             for file_name in file_list:
                 with zip_ref.open(file_name) as file:
                     s3_target_key = f"RAW/{file_name}"
@@ -90,10 +86,8 @@ def creating_archive_folder(S3_BUCKET, zip_file_key, output_path):
     try:
         s3 = boto3.client('s3')
 
-        # Copia o objeto para o novo destino
         s3.copy_object(Bucket=S3_BUCKET, CopySource={'Bucket': S3_BUCKET, 'Key': zip_file_key}, Key=output_path)
 
-        # Exclui o objeto original
         s3.delete_object(Bucket=S3_BUCKET, Key=zip_file_key)
 
         print("Arquivo copiado com Sucesso")
@@ -105,6 +99,8 @@ def csv_to_parquet(input_csv_path, output_parquet_path):
 
     spark = SparkSession.builder.appName("Application").getOrCreate()
 
+    ### CONFIG PARA TESTAR LOCAL
+
     #spark.sparkContext._jsc.hadoopConfiguration().set('spark.jars.packages', 'org.apache.hadoop:hadoop-aws:3.1.2,com.amazonaws:aws-java-sdk-bundle:1.11.271')
     #spark.sparkContext._jsc.hadoopConfiguration().set('spark.hadoop.fs.s3a.access.key', os.environ.get('AWS_ACCESS_KEY_ID'))
     #spark.sparkContext._jsc.hadoopConfiguration().set('spark.hadoop.fs.s3a.secret.key', os.environ.get('AWS_SECRET_ACCESS_KEY'))
@@ -114,16 +110,13 @@ def csv_to_parquet(input_csv_path, output_parquet_path):
     #spark.sparkContext._jsc.hadoopConfiguration().set("spark.hadoop.fs.s3a.connection.maximum", "200")
     
     try:
-        # Lê o CSV e realiza as transformações necessárias
         df = spark.read.format("csv").option("header", "true").load(input_csv_path)
         df = df \
             .withColumnRenamed("Organization Id", "Organization_Id") \
             .withColumnRenamed("Number of employees", "Number_of_employees")
         
-        # Reparticiona o DataFrame para ter apenas 1 partição
         df = df.repartition(1)
 
-        # Escreve o DataFrame em formato Parquet na pasta de saída
         df.write.parquet(output_parquet_path, mode="overwrite")
 
         print(f"CSV transformado em Parquet e salvo em: {output_parquet_path}")
@@ -141,15 +134,13 @@ def create_glue_database(database_name, region_name):
     except Exception:
         print(f'A database "{database_name}" já existe.')
 
-####
-
 def create_glue_crawler(crawler_name, database_name, s3_target, region_name):
     glue_client = boto3.client('glue', region_name=region_name)
     
     try:
         response = glue_client.create_crawler(
             Name=crawler_name,
-            Role='arn:aws:iam::198763845825:role/glue-crawler-role', 
+            Role='arn:aws:iam::XXXXXXXX:role/glue-crawler-role', 
             DatabaseName=database_name,
             Targets={'S3Targets': [{'Path': s3_target}]}
         )
@@ -199,7 +190,10 @@ if __name__ == '__main__':
 #### Dados no Bucket (Lake)
 
 ![data_bucket](prints/data_bucket_organizations.png)
-![data_bucket_delivery](prints/data_processing.png)
+![data_bucket_processing](prints/data_processing.png)
+![data_bucket_archives](prints/archives.png)
+![data_bucket_scripts](prints/scripts.png)
+
 
 #### EMR SERVERLESS
 
