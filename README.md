@@ -206,3 +206,9 @@ if __name__ == '__main__':
 #### Athena
 
 ![lambdas](prints/athena_data.png)
+
+## Acesso aos dados
+- Os dados brutos podem ser obtidos a partir deste [link](https://github.com/datablist/sample-csv-files/raw/main/files/organizations/organizations-2000000.zip)
+
+## Observações
+Configurar o projeto com suas respectivas informações :D
