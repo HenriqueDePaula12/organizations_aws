@@ -18,6 +18,8 @@ Lista de ferramentas utilizadas:
 
 ## UNZIP_AND_PROCESS
 
+# [unzip_and_process.py](project_zip/pyspark_scripts/unzip_and_process.py)
+
 Vamos entender o que esta função python está fazendo. Essa função python está realizando uma requisição no link de onde baixamos nosso arquivo de organizações e enviando para o S3 dentro do nosso bucket.
 Após o zip estar dentro do bucket, estamos extraindo o arquivo que existe dentro dele e salvamos no S3 novamente em uma pasta RAW.
 
@@ -187,10 +189,15 @@ if __name__ == '__main__':
 
 ## DOCKERFILE
 
+# [Dockerfile](project_zip/pyspark_scripts/Dockerfile)
+
 Este Dockerfile são instruções para criar uma imagem Docker personalizada, feita especificamente para facilitar o uso do PySpark e suas dependências. Inicialmente, escolhe o sistema operacional Amazon Linux, instala e configura uma versão específica do Python, criando um ambiente virtual. Posteriormente, instala bibliotecas Python, incluindo requests, boto3 e venv-pack, que é usado para empacotar todas as dependências e o ambiente virtual em um arquivo tar.gz. A imagem criada é otimizada para executar aplicações PySpark, fornecendo um ambiente pré-configurado, que simplifica a distribuição e execução do PySpark com as bibliotecas necessárias no arquivo tar.gz.
 
 
 ## AIRFLOW DAG
+
+# [t2.py](project_zip/airflow/dags/t2.py)
+# [docker-compose](project_zip/airflow/docker-compose.yaml)
 
 Nesta DAG, utilizamos operadores do Emr Serverless para realizar 5 tasks. A primeira task envolve a criação da nossa aplicação no Emr Serverless. A segunda task é uma verificação que confirma se a aplicação foi criada com sucesso. Em caso afirmativo, a DAG avança para a terceira task, caso contrário, falha. A terceira task inicia a aplicação e executa nosso script PySpark armazenado no S3 com as dependências necessárias. A quarta task repete a verificação, desta vez garantindo a execução correta do script. Finalmente, a quinta task é responsável por excluir a aplicação.
 
@@ -306,7 +313,7 @@ with DAG(
 ![lambdas](prints/dag_funcionando.png)
 ![lambdas](prints/dag_graph.png)
 
-## Acesso aos dados
+## Acesso aos códigos e estruturas gerais
 - Os dados brutos podem ser obtidos a partir deste [link](https://github.com/datablist/sample-csv-files/raw/main/files/organizations/organizations-2000000.zip)
 
 ## Observações
