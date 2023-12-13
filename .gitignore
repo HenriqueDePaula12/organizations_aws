@@ -1,3 +1,8 @@
 *.log
 *.crc
-*.gz
+*.env
+*.sh
+config/
+logs/
+plugins/
+__pycache__/
